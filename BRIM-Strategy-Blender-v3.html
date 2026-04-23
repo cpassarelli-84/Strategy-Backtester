@@ -3169,6 +3169,34 @@ function wireInputs() {
 // INIT
 // ============================================================
 (async function init() {
+  // Iframe height reporter — uses MutationObserver on the app, not a timer.
+  // Only reports when DOM actually changes. Dead-zone prevents sub-pixel jitter.
+  if (window.parent !== window) {
+    let lastH = 0;
+    let pending = false;
+    const reportHeight = () => {
+      pending = false;
+      // Use documentElement.scrollHeight which = tallest content + body margins
+      const h = document.documentElement.scrollHeight;
+      if (Math.abs(h - lastH) < 8) return;
+      lastH = h;
+      window.parent.postMessage({ brimHeight: h }, '*');
+    };
+    const schedule = () => {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(() => setTimeout(reportHeight, 50));
+    };
+    window.addEventListener('load', () => setTimeout(reportHeight, 100));
+    // Watch for any DOM mutation in the main app container
+    const obsTarget = document.getElementById('app') || document.body;
+    new MutationObserver(schedule).observe(obsTarget, {
+      childList: true, subtree: true, attributes: true, characterData: true
+    });
+    // Also catch window resizes (user resizing browser)
+    window.addEventListener('resize', schedule);
+  }
+
   try {
     renderPresets();
     renderAllocations();
