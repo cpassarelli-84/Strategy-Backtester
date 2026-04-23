@@ -3169,6 +3169,23 @@ function wireInputs() {
 // INIT
 // ============================================================
 (async function init() {
+  // Auto-height reporter for iframe embedding
+  if (window.parent !== window) {
+    const reportHeight = () => {
+      const h = Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight
+      );
+      window.parent.postMessage({ brimHeight: h }, '*');
+    };
+    // Report on load, on resize, and whenever content changes
+    window.addEventListener('load', reportHeight);
+    window.addEventListener('resize', reportHeight);
+    const obs = new ResizeObserver(reportHeight);
+    obs.observe(document.body);
+    setInterval(reportHeight, 1500); // safety net
+  }
+
   try {
     renderPresets();
     renderAllocations();
