@@ -3169,20 +3169,21 @@ function wireInputs() {
 // INIT
 // ============================================================
 (async function init() {
-  // Auto-height reporter for iframe embedding — only reports when height
-  // actually changes by more than a few pixels to avoid feedback loops.
+  // Auto-height reporter for iframe embedding. Reports height only on
+  // real events (load, user clicks), never on a timer — prevents feedback loops.
   if (window.parent !== window) {
-    let lastReportedHeight = 0;
-    const reportHeight = () => {
+    let lastH = 0;
+    window.__reportBrimHeight = function() {
       const h = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
-      if (Math.abs(h - lastReportedHeight) < 5) return; // dead-zone
-      lastReportedHeight = h;
+      if (Math.abs(h - lastH) < 20) return;
+      lastH = h;
       window.parent.postMessage({ brimHeight: h }, '*');
     };
-    window.addEventListener('load', reportHeight);
-    window.addEventListener('resize', reportHeight);
-    // Poll every 750ms instead of ResizeObserver — simpler, no feedback loop
-    setInterval(reportHeight, 750);
+    window.addEventListener('load', () => setTimeout(window.__reportBrimHeight, 100));
+    // Capture-phase click listener fires after any UI change triggers re-layout
+    document.addEventListener('click', () => setTimeout(window.__reportBrimHeight, 300), true);
+    document.addEventListener('input', () => setTimeout(window.__reportBrimHeight, 300), true);
+    document.addEventListener('change', () => setTimeout(window.__reportBrimHeight, 300), true);
   }
 
   try {
@@ -3229,6 +3230,11 @@ function wireInputs() {
       setTimeout(() => { if (App.chartData) drawChart(); }, 100);
       setTimeout(() => { if (App.chartData) drawChart(); }, 500);
       setTimeout(() => { if (App.chartData) drawChart(); }, 1500);
+      // Report final height to parent iframe
+      if (window.__reportBrimHeight) {
+        setTimeout(window.__reportBrimHeight, 600);
+        setTimeout(window.__reportBrimHeight, 1800);
+      }
     }, 300);
   } catch (err) {
     console.error('Init failed:', err);
