@@ -3169,21 +3169,20 @@ function wireInputs() {
 // INIT
 // ============================================================
 (async function init() {
-  // Auto-height reporter for iframe embedding
+  // Auto-height reporter for iframe embedding — only reports when height
+  // actually changes by more than a few pixels to avoid feedback loops.
   if (window.parent !== window) {
+    let lastReportedHeight = 0;
     const reportHeight = () => {
-      const h = Math.max(
-        document.body.scrollHeight,
-        document.documentElement.scrollHeight
-      );
+      const h = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+      if (Math.abs(h - lastReportedHeight) < 5) return; // dead-zone
+      lastReportedHeight = h;
       window.parent.postMessage({ brimHeight: h }, '*');
     };
-    // Report on load, on resize, and whenever content changes
     window.addEventListener('load', reportHeight);
     window.addEventListener('resize', reportHeight);
-    const obs = new ResizeObserver(reportHeight);
-    obs.observe(document.body);
-    setInterval(reportHeight, 1500); // safety net
+    // Poll every 750ms instead of ResizeObserver — simpler, no feedback loop
+    setInterval(reportHeight, 750);
   }
 
   try {
