@@ -2612,8 +2612,14 @@ function setupCanvas() {
 }
 
 function drawChart() {
-  if (!App.ctx || !App.chartData) return;
-  setupCanvas();
+  if (!App.chartData) return;
+  // If ctx wasn't set up (e.g. canvas wasn't in DOM when init ran — common in
+  // Webflow embed injection), set it up now.
+  if (!App.ctx) {
+    if (!setupCanvas()) return;
+  } else {
+    setupCanvas(); // refresh dimensions in case container resized
+  }
   const ctx = App.ctx;
   const { width: W, height: H } = App.chartRect;
   const { startIdx, endIdx, blend, benchResults, tickerSeries, stats } = App.chartData;
